@@ -1,0 +1,18 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+.DS_Store
+drizzle
+tsconfig.tsbuildinfo
+
+# Local notes vault — keep folder, ignore content
+notes/*
+!notes/.gitkeep
+
+# Stray iCloud symlink (do not commit)
+Courses
+
+# pi agent state
+.pi

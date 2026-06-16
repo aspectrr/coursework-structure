@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-coursework}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coursework}
+      POSTGRES_DB: ${POSTGRES_DB:-coursework}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coursework}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-coursework}:${POSTGRES_PASSWORD:-coursework}@db:5432/${POSTGRES_DB:-coursework}
+      COURSES_DIR: /courses
+      NOTES_DIR: /notes
+      DAILY_BUDGET_MINUTES: ${DAILY_BUDGET_MINUTES:-60}
+      NODE_ENV: production
+    volumes:
+      # MIT OCW downloads — read-only
+      - ${COURSES_HOST_DIR:-./courses}:/courses:ro
+      # Notes vault — open this folder in Obsidian ("Open folder as vault")
+      - ./notes:/notes
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
