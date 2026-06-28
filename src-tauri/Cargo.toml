@@ -1,0 +1,33 @@
+[package]
+name = "coursework"
+version = "0.1.0"
+description = "Daily consistency for self-paced courses"
+authors = ["you"]
+edition = "2021"
+rust-version = "1.88"
+
+[lib]
+name = "coursework_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled", "blob"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+thiserror = "2"
+dirs = "5"
+walkdir = "2"
+anyhow = "1"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

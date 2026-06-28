@@ -1,11 +1,14 @@
 node_modules
-.next
+dist
 .env
 .env.local
 *.log
 .DS_Store
-drizzle
 tsconfig.tsbuildinfo
+
+# Rust / Tauri build artifacts
+src-tauri/target
+src-tauri/gen
 
 # Local notes vault — keep folder, ignore content
 notes/*
@@ -16,3 +19,5 @@ Courses
 
 # pi agent state
 .pi
+.pi/
+.pi-lens/
