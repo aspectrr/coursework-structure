@@ -261,7 +261,7 @@ pub fn find_course_dirs(root: &Path) -> Vec<PathBuf> {
 // ---------- main parse ----------
 
 pub fn parse_course(course_path: &Path, root: &Path) -> Result<ParsedCourse> {
-    let mut warnings = Vec::new();
+    let warnings = Vec::new();
     let data_path = course_path.join("data.json");
     let data = read_json(&data_path).ok_or_else(|| Error::NotFound(format!("data.json at {}", course_path.display())))?;
     let folder_name = course_path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();

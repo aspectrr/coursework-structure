@@ -10,8 +10,6 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("not found: {0}")]
     NotFound(String),
-    #[error("bad request: {0}")]
-    BadRequest(String),
     #[error("{0}")]
     Other(String),
 }
@@ -34,7 +32,3 @@ impl Serialize for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub type CmdResult<T> = std::result::Result<T, String>;
-
-pub fn to_cmd<T, E: std::fmt::Display>(r: std::result::Result<T, E>) -> CmdResult<T> {
-    r.map_err(|e| e.to_string())
-}

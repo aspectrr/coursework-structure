@@ -1,7 +1,6 @@
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
-use crate::db::now_iso;
 use crate::error::{Error, Result};
 use crate::models::{Course, Item};
 

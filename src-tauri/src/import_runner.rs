@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use rusqlite::{params, Connection};
 
 use crate::error::Result;
-use crate::importer::{ParsedCourse, ParsedLecture, ParsedAssignment, ParsedSession, default_lecture_minutes, default_assignment_minutes};
+use crate::importer::{ParsedCourse, default_lecture_minutes, default_assignment_minutes};
 use crate::models::{to_json, opt_json};
 use crate::db::now_iso;
 

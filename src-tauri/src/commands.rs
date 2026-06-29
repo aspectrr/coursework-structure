@@ -4,9 +4,8 @@ use std::path::PathBuf;
 use tauri::{Manager, State};
 
 use crate::db::Db;
-use crate::error::{CmdResult, Error, Result, to_cmd};
-use crate::importer::{find_course_dirs, parse_course, import_all};
-use crate::import_runner;
+use crate::error::{CmdResult, Result};
+use crate::importer::{find_course_dirs, import_all};
 use crate::models::{Course, Item, Session, VideoNote, slugify, parse_json_array};
 use crate::plan::{build_daily_plan, get_streak, mark_item, row_to_item, DailyPlan};
 use crate::paths::{notes_dir, default_courses_dir};
@@ -433,7 +432,7 @@ pub fn preview_import(app: tauri::AppHandle, state: State<'_, Db>) -> CmdResult<
 
 #[tauri::command]
 pub fn convert_local_path_to_url(path: String, app: tauri::AppHandle) -> CmdResult<String> {
-    use tauri::Manager;
+    
     let _ = app;
     // ponytail: webview uses tauri://localhost on mac, asset protocol elsewhere.
     // Frontend should use convertFileSrc; this server-side variant is a convenience for back-compat.
