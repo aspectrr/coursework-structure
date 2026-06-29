@@ -1,6 +1,6 @@
 name: release
 
-# On push to main: builds all platforms and publishes to a rolling
+# On push to main: builds macOS arm64 and publishes to a rolling
 # "latest" release. On a pushed v* tag: publishes a versioned release.
 # Either way the app bundles are downloadable from the Releases page.
 
@@ -24,25 +24,9 @@ jobs:
         include:
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
-            label: macos-arm64
-          - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
-            label: macos-x86_64
-          - platform: ubuntu-22.04
-            args: ''
-            label: linux-x86_64
-          - platform: windows-latest
-            args: ''
-            label: windows-x86_64
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: install Linux deps
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -50,7 +34,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: aarch64-apple-darwin
 
       - uses: swatinem/rust-cache@v2
         with:
@@ -82,11 +66,8 @@ jobs:
 
             ## Install
 
-            - **macOS (Apple Silicon):** download `*.aarch64.dmg`, drag to Applications.
-              First launch: right-click → Open (the app is unsigned).
-            - **macOS (Intel):** download `*.x64.dmg`.
-            - **Windows:** download `*-setup.exe` and run.
-            - **Linux:** download `*.AppImage` (chmod +x) or `*.deb`.
+            - Download `*.aarch64.dmg`, drag to Applications.
+            - First launch: right-click → Open (the app is unsigned).
           releaseDraft: ${{ steps.tag.outputs.draft }}
           prerelease: false
           args: ${{ matrix.args }}

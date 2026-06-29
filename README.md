@@ -41,13 +41,11 @@ the workflow run (downloadable from the Actions tab).
 Platform downloads:
 
 - **macOS Apple Silicon:** `*.aarch64.dmg` — drag to Applications. First launch: right-click → Open (app is unsigned).
-- **macOS Intel:** `*.x64.dmg`
-- **Windows:** `*-setup.exe` (NSIS installer)
-- **Linux:** `*.AppImage` (`chmod +x` then run) or `*.deb`
 
-The app is not code-signed or notarized — macOS/Windows will warn on first
-launch. Right-click → Open (macOS) or "More info → Run anyway" (Windows) to
-bypass. Add a signing cert later when distributing publicly.
+The app is not code-signed or notarized — macOS will warn on first launch.
+Right-click → Open to bypass. Add a signing cert later when distributing publicly.
+Linux/Windows builds aren't currently produced by CI; add them back to the
+workflow matrix when needed.
 
 ## Data location
 
