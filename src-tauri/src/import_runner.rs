@@ -169,7 +169,7 @@ fn insert_items(
                 estimated_minutes, status, due_session_id, due_at, youtube_key, archive_url,
                 thumbnail_url, pdf_path, transcript_path, external_url, source_key, resource_type,
                 learning_resource_types, started_at, completed_at, created_at, updated_at)
-             VALUES (?1,?2,?3,'lecture',?4,?5,?6,?7,?8,NULL,NULL,?9,?10,?11,?12,?13,NULL,?14,?15,?16,?17,?18,?18,?18)",
+             VALUES (?1,?2,?3,'lecture',?4,?5,?6,?7,?8,NULL,NULL,?9,?10,?11,?12,?13,NULL,?14,?15,?16,?17,?18,?19,?19)",
             params![
                 id, course_id, session_id, item_order,
                 lec.resource.title.clone().unwrap_or_else(|| format!("Lecture {}", lec.session_number.unwrap_or(item_order))),
@@ -202,7 +202,7 @@ fn insert_items(
                 estimated_minutes, status, due_session_id, due_at, youtube_key, archive_url,
                 thumbnail_url, pdf_path, transcript_path, external_url, source_key, resource_type,
                 learning_resource_types, started_at, completed_at, created_at, updated_at)
-             VALUES (?1,?2,NULL,'assignment',?3,?4,?5,?6,?7,?8,NULL,NULL,NULL,NULL,?9,NULL,NULL,?10,?11,?12,?13,?14,?14,?14)",
+             VALUES (?1,?2,NULL,'assignment',?3,?4,?5,?6,?7,?8,NULL,NULL,NULL,NULL,?9,NULL,NULL,?10,?11,?12,?13,?14,?15,?15)",
             params![
                 id, course_id, item_order, title,
                 hw.resource.description,

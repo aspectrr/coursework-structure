@@ -395,7 +395,7 @@ pub fn get_courses_dir(app: tauri::AppHandle, state: State<'_, Db>) -> CmdResult
     let cur: Option<String> = conn.query_row(
         "SELECT value FROM settings WHERE key='courses_dir'",
         [], |r| r.get::<_, String>(0),
-    ).ok().and_then(|s| serde_json::from_str::<String>(&s).ok());
+    ).ok();
     Ok(cur.unwrap_or_else(|| default_courses_dir(&app).to_string_lossy().into_owned()))
 }
 
@@ -410,13 +410,12 @@ pub async fn pick_courses_dir(app: tauri::AppHandle, state: State<'_, Db>) -> Cm
     let Some(path) = chosen else { return Ok(None) };
     let path_str = path.to_string();
     let now = crate::db::now_iso();
-    let val = serde_json::to_string(&path_str).map_err(|e| e.to_string())?;
     {
         let conn = state.get();
         conn.execute(
             "INSERT INTO settings (key, value, updated_at) VALUES ('courses_dir', ?1, ?2)
              ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
-            params![val, now],
+            params![path_str, now],
         ).map_err(|e| e.to_string())?;
     }
     Ok(Some(path_str))

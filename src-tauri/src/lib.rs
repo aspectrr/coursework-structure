@@ -1,11 +1,11 @@
 mod commands;
 mod db;
 mod error;
-mod importer;
-mod import_runner;
-mod models;
-mod paths;
-mod plan;
+pub mod importer;
+pub mod import_runner;
+pub mod models;
+pub mod paths;
+pub mod plan;
 
 use tauri::Manager;
 

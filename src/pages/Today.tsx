@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type TodayView } from '@/lib/api';
+import { api, fileUrl, type TodayView } from '@/lib/api';
 
 export default function Today() {
   const [data, setData] = useState<TodayView | null>(null);
@@ -101,7 +101,7 @@ export default function Today() {
               return (
                 <li key={course.id} className="bg-white border border-ink-200 rounded-xl p-5 flex items-center gap-5">
                   {course.imageUrl && (
-                    <img src={course.imageUrl} alt="" className="w-16 h-16 object-cover rounded-md border border-ink-200" />
+                    <img src={fileUrl(course.imageUrl) ?? ''} alt="" className="w-16 h-16 object-cover rounded-md border border-ink-200" />
                   )}
                   <div className="flex-1 min-w-0">
                     <Link to={`/courses/${course.slug}`} className="font-medium text-ink-900 hover:text-accent">
