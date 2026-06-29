@@ -22,15 +22,32 @@ bun run tauri:dev      # launches Tauri dev window with HMR on Vite
 ## Build
 
 ```bash
-bun run tauri:build    # produces src-tauri/target/release/bundle/macos/Coursework.app
-                       # (.dmg requires running on a Mac with GUI session — uses Finder AppleScript)
+bun run tauri:build                 # full bundle (.app + .dmg if GUI session)
+bunx tauri build --bundles app      # headless-safe .app only
 ```
 
-To build just the `.app` (works in headless):
+## Install (end users)
 
-```bash
-bunx tauri build --bundles app
-```
+Easiest path: download a prebuilt bundle from the GitHub Releases page.
+
+- **Latest from `main`:** https://github.com/aspectrr/coursework-structure/releases/tag/latest
+- **Versioned:** any `v*` tag, e.g. https://github.com/aspectrr/coursework-structure/releases/tag/v0.1.0
+
+Releases are produced automatically by `.github/workflows/release.yml` on every
+push to `main` (rolling `latest` release) and on `v*` tag pushes (versioned
+releases). PRs build via `.github/workflows/build.yml` and attach artifacts to
+the workflow run (downloadable from the Actions tab).
+
+Platform downloads:
+
+- **macOS Apple Silicon:** `*.aarch64.dmg` — drag to Applications. First launch: right-click → Open (app is unsigned).
+- **macOS Intel:** `*.x64.dmg`
+- **Windows:** `*-setup.exe` (NSIS installer)
+- **Linux:** `*.AppImage` (`chmod +x` then run) or `*.deb`
+
+The app is not code-signed or notarized — macOS/Windows will warn on first
+launch. Right-click → Open (macOS) or "More info → Run anyway" (Windows) to
+bypass. Add a signing cert later when distributing publicly.
 
 ## Data location
 
