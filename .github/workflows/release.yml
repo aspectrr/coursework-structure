@@ -1,0 +1,73 @@
+name: release
+
+# On push to main: builds macOS arm64 and publishes to a rolling
+# "latest" release. On a pushed v* tag: publishes a versioned release.
+# Either way the app bundles are downloadable from the Releases page.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - run: bun install --frozen-lockfile
+
+      - name: pick release tag
+        id: tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            echo "name=Coursework ${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            echo "draft=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+            echo "name=Coursework (latest from main)" >> "$GITHUB_OUTPUT"
+            echo "draft=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ steps.tag.outputs.tag }}
+          releaseName: ${{ steps.tag.outputs.name }}
+          releaseBody: |
+            Built from commit ${{ github.sha }}.
+
+            ## Install
+
+            - Download `*.aarch64.dmg`, drag to Applications.
+            - First launch: right-click → Open (the app is unsigned).
+          releaseDraft: ${{ steps.tag.outputs.draft }}
+          prerelease: false
+          args: ${{ matrix.args }}

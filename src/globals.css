@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+html, body {
+  background: #f7f7f5;
+  color: #1c1a16;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-image: radial-gradient(rgba(116, 105, 82, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+::selection { background: #e89373; color: #1c1a16; }
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.cbox {
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid #b8ad97;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  position: relative;
+  top: 1px;
+}
+.cbox:hover { border-color: #c75b39; }
+.cbox:checked { background: #c75b39; border-color: #c75b39; }
+.cbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px; top: 0px;
+  width: 6px; height: 11px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}

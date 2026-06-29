@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Coursework",
+  "version": "0.1.0",
+  "identifier": "com.coursework.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "bun run dev:frontend",
+    "beforeBuildCommand": "bun run build:frontend"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Coursework",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' 'unsafe-inline' https://www.youtube.com https://i.ytimg.com https://img.youtube.com https://archive.org; img-src 'self' data: https: http: tauri: asset:; frame-src https://www.youtube.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com; media-src 'self' https: blob:; style-src 'self' 'unsafe-inline'",
+      "devCsp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**", "$APPLOCALDATA/**", "$HOME/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Education",
+    "shortDescription": "Self-paced coursework tracker",
+    "longDescription": "Daily consistency for self-paced courses. Import MIT OCW, watch lectures, take timestamped notes."
+  }
+}

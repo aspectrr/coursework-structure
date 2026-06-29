@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -11,7 +11,7 @@ const config: Config = {
           200: '#d8d1c4',
           300: '#b8ad97',
           400: '#928669',
-          500: '#74695260',
+          500: '#746952',
           600: '#5d5446',
           700: '#4b4439',
           800: '#312d26',

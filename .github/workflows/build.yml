@@ -1,0 +1,60 @@
+name: build
+
+# Builds the macOS arm64 app on every PR and push (except main / tags),
+# uploads artifacts to the workflow run for download. No release is created.
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+    tags-ignore: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - run: bun install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0.6.2
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: '' # empty → no release
+          args: ${{ matrix.args }}
+
+      - name: upload bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-bundles
+          path: |
+            src-tauri/target/*/release/bundle/dmg/*.dmg
+            src-tauri/target/*/release/bundle/macos/*.app
+          if-no-files-found: error
