@@ -1,91 +1,122 @@
-import { useEffect, useState, useRef } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { api, fileUrl, type Item, type Course } from '@/lib/api';
+import { createResource, Match, Show, Switch } from 'solid-js';
+import { A, useParams } from '@solidjs/router';
+import { api, fileUrl, type Item } from '@/lib/api';
 import { VideoPlayer, type PlayerHandle } from '@/components/VideoPlayer';
 import NoteStream from '@/components/NoteStream';
 import NoteEditor from '@/components/NoteEditor';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 export default function ItemPlayer() {
-  const { slug = '', id = '' } = useParams();
-  const [item, setItem] = useState<Item | null>(null);
-  const [course, setCourse] = useState<Course | null>(null);
-  const playerRef = useRef<PlayerHandle>(null);
+  const params = useParams();
+  const [item, { refetch }] = createResource<Item>(() => api.itemDetail(params.id ?? ''));
+  const [course] = createResource(
+    () => params.slug ?? '',
+    (slug) => api.courseDetail(slug).then((d) => d.course),
+  );
 
-  useEffect(() => {
-    api.itemDetail(id).then(setItem).catch(console.error);
-    api.courseDetail(slug).then((d) => setCourse(d.course)).catch(console.error);
-  }, [id, slug]);
-
-  if (!item) return <div className="text-ink-500">Loading…</div>;
-
-  const hasVideo = !!item.youtubeKey;
-  const titleSlug = item.title;
+  let player: PlayerHandle | undefined;
+  const onPlayerReady = (h: PlayerHandle) => {
+    player = h;
+  };
 
   return (
-    <div className="space-y-5">
-      <div className="text-xs text-ink-500">
-        <Link to={`/courses/${slug}`} className="hover:text-accent">{course?.title ?? slug}</Link>
-        <span className="mx-1">/</span>
-        <span className="uppercase tracking-wide">{item.type}</span>
+    <div class="space-y-5">
+      <div class="text-body-sm text-stone">
+        <A href={`/courses/${params.slug}`} class="hover:text-moss">{course()?.title ?? params.slug}</A>
+        <span class="mx-1">/</span>
+        <span class="uppercase tracking-[0.05em]">{item()?.type}</span>
       </div>
-      <h1 className="font-serif text-2xl">{item.title}</h1>
-      {item.description && <p className="text-sm text-ink-600 -mt-2">{item.description}</p>}
+      <h1 class="font-serif text-heading-sm font-bold text-true-black">{item()?.title}</h1>
+      <Show when={item()?.description}>
+        <p class="text-body-sm text-stone">{item()!.description}</p>
+      </Show>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Left: media */}
-        <div className="space-y-3">
-          {hasVideo ? (
-            <VideoPlayer ref={playerRef} videoId={item.youtubeKey!} />
-          ) : item.pdfPath ? (
-            <div className="aspect-[4/5] bg-white border border-ink-200 rounded-lg overflow-hidden">
-              <iframe src={fileUrl(item.pdfPath) ?? ''} title="pdf" className="w-full h-full" />
-            </div>
-          ) : item.externalUrl ? (
-            <a href={item.externalUrl} target="_blank" rel="noreferrer" className="text-accent underline">
-              Open external resource ↗
-            </a>
-          ) : (
-            <div className="bg-white border border-dashed border-ink-300 rounded-lg p-8 text-center text-ink-500 text-sm">
-              No media attached to this item.
-            </div>
-          )}
-
-          {/* Status controls */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={async () => {
-                await api.markItemComplete(item.id, item.status === 'completed' ? 'not_started' : 'completed');
-                setItem(await api.itemDetail(id));
-              }}
-              className="text-xs px-3 py-1.5 border border-ink-300 rounded-md hover:bg-ink-50"
-            >
-              {item.status === 'completed' ? '✓ completed' : 'mark complete'}
-            </button>
-            {item.transcriptPath && (
-              <a href={fileUrl(item.transcriptPath) ?? ''} target="_blank" rel="noreferrer"
-                 className="text-xs px-3 py-1.5 border border-ink-300 rounded-md hover:bg-ink-50">
-                transcript
-              </a>
-            )}
-            <span className="ml-auto text-xs text-ink-500">{item.estimatedMinutes ?? '?'}m est.</span>
-          </div>
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Left: media — coral product frame is the one allowed shadow */}
+        <div class="space-y-3">
+          <Show when={item()} fallback={<div class="text-stone">Loading…</div>}>
+            <PlayerMedia item={item()!} onReady={onPlayerReady} onToggle={() => refetch()} />
+          </Show>
         </div>
 
         {/* Right: timestamped notes */}
-        <div className="bg-ink-50 border border-ink-200 rounded-lg p-4 min-h-[400px] max-h-[640px] flex flex-col">
-          <NoteStream itemId={item.id} playerRef={playerRef} hasVideo={hasVideo} />
-        </div>
+        <Card class="flex max-h-[640px] min-h-[400px] flex-col">
+          <Show when={item()}>
+            <NoteStream itemId={item()!.id} player={() => player} hasVideo={!!item()!.youtubeKey} />
+          </Show>
+        </Card>
       </div>
 
       {/* Long-form markdown notes (Obsidian-compatible) */}
-      <section className="pt-4 border-t border-ink-200">
-        <NoteEditor
-          courseSlug={slug}
-          kind={item.type === 'assignment' ? 'assignment' : 'lecture'}
-          order={item.orderIndex}
-          titleSlug={titleSlug}
-        />
+      <section class="border-t border-fog pt-4">
+        <Show when={item()}>
+          <NoteEditor
+            courseSlug={params.slug ?? ''}
+            kind={item()!.type === 'assignment' ? 'assignment' : 'lecture'}
+            order={item()!.orderIndex}
+            titleSlug={item()!.title}
+          />
+        </Show>
       </section>
     </div>
+  );
+}
+
+function PlayerMedia(props: { item: Item; onReady: (h: PlayerHandle) => void; onToggle: () => void }) {
+  return (
+    <>
+      <Switch>
+        <Match when={props.item.youtubeKey}>
+          {/* Coral product frame around the player */}
+          <div class="frame-coral overflow-hidden">
+            <VideoPlayer videoId={props.item.youtubeKey!} onReady={props.onReady} />
+          </div>
+        </Match>
+        <Match when={props.item.pdfPath}>
+          <div class="frame-coral aspect-[4/5] overflow-hidden bg-pure-white">
+            <iframe src={fileUrl(props.item.pdfPath) ?? ''} title="pdf" class="h-full w-full" />
+          </div>
+        </Match>
+        <Match when={props.item.externalUrl}>
+          <A href={props.item.externalUrl!} target="_blank" rel="noreferrer" class="text-moss underline">
+            Open external resource ↗
+          </A>
+        </Match>
+        <Match when={true}>
+          <div class="rounded-lg border border-dashed border-ash bg-pure-white/50 p-8 text-center text-body-sm text-stone">
+            No media attached to this item.
+          </div>
+        </Match>
+      </Switch>
+
+      {/* Status controls */}
+      <div class="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            await api.markItemComplete(
+              props.item.id,
+              props.item.status === 'completed' ? 'not_started' : 'completed',
+            );
+            props.onToggle();
+          }}
+        >
+          {props.item.status === 'completed' ? '✓ completed' : 'mark complete'}
+        </Button>
+        <Show when={props.item.transcriptPath}>
+          <a
+            href={fileUrl(props.item.transcriptPath) ?? ''}
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex h-7 items-center rounded-lg border-[1.5px] border-midnight-ink px-3 text-xs text-midnight-ink hover:bg-midnight-ink hover:text-cream-paper"
+          >
+            transcript
+          </a>
+        </Show>
+        <span class="tabular ml-auto text-xs text-stone">{props.item.estimatedMinutes ?? '?'}m est.</span>
+      </div>
+    </>
   );
 }

@@ -1,69 +1,82 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { createResource, For, Show } from 'solid-js';
+import { A, useParams } from '@solidjs/router';
 import { api, fileUrl, type CourseDetail } from '@/lib/api';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function CourseDetail() {
-  const { slug = '' } = useParams();
-  const [data, setData] = useState<CourseDetail | null>(null);
+  const params = useParams();
+  const [data, { refetch }] = createResource<CourseDetail>(() => api.courseDetail(params.slug ?? ''));
 
-  useEffect(() => { api.courseDetail(slug).then(setData).catch(console.error); }, [slug]);
-  if (!data) return <div className="text-ink-500">Loading…</div>;
-
-  const { course, items } = data;
-  const total = items.length;
-  const done = items.filter((i) => i.status === 'completed').length;
-  const minutesTotal = items.reduce((s, i) => s + (i.estimatedMinutes ?? 0), 0);
-  const minutesDone = items.filter((i) => i.status === 'completed').reduce((s, i) => s + (i.estimatedMinutes ?? 0), 0);
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const stats = () => {
+    const items = data()?.items ?? [];
+    const total = items.length;
+    const done = items.filter((i) => i.status === 'completed').length;
+    const minutesTotal = items.reduce((s, i) => s + (i.estimatedMinutes ?? 0), 0);
+    const minutesDone = items
+      .filter((i) => i.status === 'completed')
+      .reduce((s, i) => s + (i.estimatedMinutes ?? 0), 0);
+    return { total, done, minutesTotal, minutesDone, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
+  };
 
   return (
-    <div className="space-y-8">
-      <header className="flex items-start gap-5">
-        {course.imageUrl && (
-          <img src={fileUrl(course.imageUrl) ?? ''} alt="" className="w-24 h-24 object-cover rounded-lg border border-ink-200" />
-        )}
-        <div className="flex-1">
-          <div className="text-xs uppercase tracking-wide text-ink-500">{course.courseNumber}</div>
-          <h1 className="font-serif text-3xl">{course.title}</h1>
-          {course.term && <div className="text-sm text-ink-500 mt-1">{course.term} {course.year}</div>}
-          {course.description && <p className="text-sm text-ink-600 mt-3 max-w-2xl">{course.description}</p>}
-          <div className="mt-3 text-xs text-ink-500 tabular">
-            {done}/{total} items · {minutesDone}m / {minutesTotal}m
+    <div class="space-y-8">
+      <header class="flex items-start gap-5">
+        <Show when={data()?.course.imageUrl}>
+          <img src={fileUrl(data()!.course.imageUrl) ?? ''} alt="" class="h-24 w-24 rounded-lg border border-fog object-cover" />
+        </Show>
+        <div class="flex-1">
+          <div class="eyebrow">{data()?.course.courseNumber}</div>
+          <h1 class="font-serif text-heading font-bold text-true-black">{data()?.course.title}</h1>
+          <Show when={data()?.course.term}>
+            <div class="mt-1 text-body-sm text-stone">{data()!.course.term} {data()!.course.year}</div>
+          </Show>
+          <Show when={data()?.course.description}>
+            <p class="mt-3 max-w-2xl text-body-sm text-stone">{data()!.course.description}</p>
+          </Show>
+          <div class="tabular mt-3 text-xs text-stone">
+            {stats().done}/{stats().total} items · {stats().minutesDone}m / {stats().minutesTotal}m
           </div>
-          <div className="mt-2 h-1.5 bg-ink-100 rounded-full overflow-hidden max-w-md">
-            <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
+          <div class="mt-2 h-1.5 max-w-md overflow-hidden rounded-pill bg-fog">
+            <div class="h-full bg-moss" style={{ width: `${stats().pct}%` }} />
           </div>
         </div>
       </header>
 
       <section>
-        <h2 className="font-serif text-xl mb-3">Items</h2>
-        <ul className="bg-white border border-ink-200 rounded-xl divide-y divide-ink-100">
-          {items.map((item) => (
-            <li key={item.id} className="px-5 py-3 flex items-center gap-4">
-              <input
-                type="checkbox"
-                className="cbox"
-                checked={item.status === 'completed'}
-                onChange={async () => {
-                  await api.markItemComplete(item.id, item.status === 'completed' ? 'not_started' : 'completed');
-                  setData(await api.courseDetail(slug));
-                }}
-              />
-              <div className="flex-1 min-w-0">
-                <Link to={`/courses/${slug}/items/${item.id}`} className="font-medium text-ink-900 hover:text-accent">
-                  {item.title}
-                </Link>
-                <div className="text-xs text-ink-500 mt-0.5 flex items-center gap-2">
-                  <span className="uppercase tracking-wide">{item.type}</span>
-                  {item.estimatedMinutes != null && <span>· {item.estimatedMinutes}m</span>}
-                  {item.youtubeKey && <span className="text-red-700">· ▶ video</span>}
-                  {item.pdfPath && <span className="text-ink-600">· 📄 pdf</span>}
+        <h2 class="mb-3 font-serif text-heading-sm font-bold text-true-black">Items</h2>
+        <ul class="divide-y divide-fog rounded-lg border border-fog bg-pure-white">
+          <For each={data()?.items}>
+            {(item) => (
+              <li class="flex items-center gap-4 px-5 py-3">
+                <Checkbox
+                  aria-label={`Mark ${item.title} ${item.status === 'completed' ? 'incomplete' : 'complete'}`}
+                  checked={item.status === 'completed'}
+                  onChange={async (checked) => {
+                    await api.markItemComplete(item.id, checked ? 'completed' : 'not_started');
+                    refetch();
+                  }}
+                />
+                <div class="min-w-0 flex-1">
+                  <A href={`/courses/${params.slug}/items/${item.id}`} class="font-medium text-true-black hover:text-moss">
+                    {item.title}
+                  </A>
+                  <div class="mt-0.5 flex items-center gap-2 text-xs text-stone">
+                    <span class="uppercase tracking-[0.05em]">{item.type}</span>
+                    <Show when={item.estimatedMinutes != null}>
+                      <span>· {item.estimatedMinutes}m</span>
+                    </Show>
+                    <Show when={item.youtubeKey}>
+                      <span class="text-moss">· ▶ video</span>
+                    </Show>
+                    <Show when={item.pdfPath}>
+                      <span>· 📄 pdf</span>
+                    </Show>
+                  </div>
                 </div>
-              </div>
-              <span className="text-xs text-ink-400 uppercase">{item.status.replace('_', ' ')}</span>
-            </li>
-          ))}
+                <span class="text-xs uppercase text-ash">{item.status.replace('_', ' ')}</span>
+              </li>
+            )}
+          </For>
         </ul>
       </section>
     </div>

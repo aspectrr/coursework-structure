@@ -1,136 +1,162 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { createResource, For, Show } from 'solid-js';
+import { A } from '@solidjs/router';
 import { api, fileUrl, type TodayView } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 export default function Today() {
-  const [data, setData] = useState<TodayView | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [data, { refetch }] = createResource<TodayView>(api.todayGet);
 
-  async function load() {
-    try { setData(await api.todayGet()); setErr(null); }
-    catch (e: any) { setErr(String(e)); }
-  }
-  useEffect(() => { load(); }, []);
+  // ponytail: swap for real empty-state copy if error states become common
+  const errMsg = () => (data.error ? String(data.error) : null);
 
   async function complete(itemId: string) {
     await api.markItemComplete(itemId, 'completed');
-    load();
+    refetch();
   }
 
-  if (err) return <div className="text-red-700 text-sm">Error: {err}</div>;
-  if (!data) return <div className="text-ink-500">Loading…</div>;
-
-  const { plan, streak, progress } = data;
-  const dateStr = new Date(plan.date + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
+  const dateStr = () =>
+    data() &&
+    new Date(data()!.plan.date + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric',
+    });
 
   return (
-    <div className="space-y-10">
-      <section>
-        <div className="flex items-baseline justify-between mb-1">
-          <h1 className="font-serif text-3xl">Today</h1>
-          <div className="text-sm text-ink-500 tabular">{dateStr}</div>
+    <div class="space-y-10">
+      <Show when={errMsg()}>
+        <div class="rounded-lg border-[1.5px] border-ember-coral bg-coral-whisper p-4 font-mono text-body-sm text-midnight-ink">
+          backend error: {errMsg()}
         </div>
-        <div className="text-sm text-ink-600 mb-4">
-          {plan.lines.length === 0 ? (
-            <span>Nothing scheduled. Import a course folder in <Link to="/admin" className="text-accent underline">admin</Link>.</span>
-          ) : (
-            <span>
-              <span className="font-medium text-accent">{plan.scheduledMinutes}min</span> planned of{' '}
-              <span className="tabular">{plan.budgetMinutes}min</span> budget
-              {plan.overdueCount > 0 && <span className="text-red-700"> · {plan.overdueCount} overdue</span>}
-            </span>
-          )}
-        </div>
-
-        {plan.lines.length > 0 && (
-          <ul className="bg-white border border-ink-200 rounded-xl divide-y divide-ink-100 shadow-sm">
-            {plan.lines.map((line, i) => (
-              <li key={line.itemId} className="flex items-start gap-3 px-5 py-3">
-                <span className="text-xs text-ink-400 tabular mt-1 w-6">{String(i + 1).padStart(2, '0')}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 text-xs text-ink-500 mb-1">
-                    <span className="uppercase tracking-wide font-medium">{line.type}</span>
-                    <span>·</span>
-                    <Link to={`/courses/${line.courseSlug}`} className="hover:text-accent">{line.courseTitle}</Link>
-                    {line.estimatedMinutes > 0 && (<><span>·</span><span className="tabular">{line.estimatedMinutes}m</span></>)}
-                  </div>
-                  <Link to={`/courses/${line.courseSlug}/items/${line.itemId}`} className="font-medium text-ink-900 hover:text-accent">
-                    {line.title}
-                  </Link>
-                  <div className="flex gap-3 mt-1 text-xs">
-                    {line.youtubeKey && (
-                      <Link to={`/courses/${line.courseSlug}/items/${line.itemId}`} className="text-red-700 hover:underline">▶ video</Link>
-                    )}
-                    {line.pdfPath && (
-                      <Link to={`/courses/${line.courseSlug}/items/${line.itemId}`} className="text-ink-600 hover:underline">📄 pdf</Link>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => complete(line.itemId)}
-                  className="text-xs px-3 py-1.5 border border-ink-300 rounded-md hover:bg-ink-50"
-                  title="Mark complete"
-                >
-                  done
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="grid grid-cols-3 gap-4">
-        <Stat label="Streak" value={streak} sub={`day${streak === 1 ? '' : 's'}`} />
-        <Stat label="Active courses" value={progress.length} />
-        <Stat label="Budget" value={plan.budgetMinutes} sub="min / day" />
-      </section>
-
+      </Show>
       <section>
-        <h2 className="font-serif text-2xl mb-3">Courses</h2>
-        {progress.length === 0 ? (
-          <div className="bg-white border border-dashed border-ink-300 rounded-xl p-8 text-center text-ink-500">
-            No courses imported. Visit <Link to="/admin" className="text-accent underline">admin</Link> to import.
+        <div class="mb-1 flex items-baseline justify-between">
+          <div>
+            <span class="eyebrow">Daily plan</span>
+            <span class="eyebrow-wave" />
           </div>
-        ) : (
-          <ul className="space-y-3">
-            {progress.map(({ course, total, done, minutesTotal, minutesDone }) => {
-              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-              return (
-                <li key={course.id} className="bg-white border border-ink-200 rounded-xl p-5 flex items-center gap-5">
-                  {course.imageUrl && (
-                    <img src={fileUrl(course.imageUrl) ?? ''} alt="" className="w-16 h-16 object-cover rounded-md border border-ink-200" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/courses/${course.slug}`} className="font-medium text-ink-900 hover:text-accent">
-                      {course.courseNumber ? `${course.courseNumber} — ` : ''}{course.title}
-                    </Link>
-                    <div className="text-xs text-ink-500 mt-0.5 tabular">
-                      {done}/{total} items · {minutesDone}m / {minutesTotal}m
+          <div class="tabular text-body-sm text-stone">{dateStr()}</div>
+        </div>
+        <h1 class="font-serif text-heading font-bold text-true-black">Today</h1>
+        <div class="mb-4 text-body-sm text-stone">
+          <Show
+            when={data()?.plan.lines.length}
+            fallback={
+              <>
+                Nothing scheduled. Import a course folder in{' '}
+                <A href="/admin" class="text-moss underline">admin</A>.
+              </>
+            }
+          >
+            <span>
+              <span class="font-medium text-moss">{data()!.plan.scheduledMinutes}min</span> planned of{' '}
+              <span class="tabular">{data()!.plan.budgetMinutes}min</span> budget
+              <Show when={data()!.plan.overdueCount > 0}>
+                <span class="text-ember-coral"> · {data()!.plan.overdueCount} overdue</span>
+              </Show>
+            </span>
+          </Show>
+        </div>
+
+        <Show when={data()?.plan.lines.length}>
+          <ul class="divide-y divide-fog rounded-lg border border-fog bg-pure-white">
+            <For each={data()!.plan.lines}>
+              {(line, i) => (
+                <li class="flex items-start gap-3 px-5 py-3">
+                  <span class="tabular mt-1 w-6 text-xs text-ash">{String(i() + 1).padStart(2, '0')}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="mb-1 flex items-center gap-2 text-xs text-stone">
+                      <span class="font-medium uppercase tracking-[0.05em]">{line.type}</span>
+                      <span>·</span>
+                      <A href={`/courses/${line.courseSlug}`} class="hover:text-moss">{line.courseTitle}</A>
+                      <Show when={line.estimatedMinutes > 0}>
+                        <><span>·</span><span class="tabular">{line.estimatedMinutes}m</span></>
+                      </Show>
                     </div>
-                    <div className="mt-2 h-1.5 bg-ink-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
+                    <A
+                      href={`/courses/${line.courseSlug}/items/${line.itemId}`}
+                      class="font-medium text-true-black hover:text-moss"
+                    >
+                      {line.title}
+                    </A>
+                    <div class="mt-1 flex gap-3 text-xs">
+                      <Show when={line.youtubeKey}>
+                        <A href={`/courses/${line.courseSlug}/items/${line.itemId}`} class="text-moss hover:underline">
+                          ▶ video
+                        </A>
+                      </Show>
+                      <Show when={line.pdfPath}>
+                        <A href={`/courses/${line.courseSlug}/items/${line.itemId}`} class="text-stone hover:underline">
+                          📄 pdf
+                        </A>
+                      </Show>
                     </div>
                   </div>
-                  <div className="text-2xl font-serif tabular text-ink-700">{pct}%</div>
+                  <Button variant="outline" size="sm" onClick={() => complete(line.itemId)} title="Mark complete">
+                    done
+                  </Button>
                 </li>
-              );
-            })}
+              )}
+            </For>
           </ul>
-        )}
+        </Show>
+      </section>
+
+      <section class="grid grid-cols-3 gap-4">
+        <Stat label="Streak" value={data()?.streak ?? 0} sub={data()?.streak === 1 ? 'day' : 'days'} />
+        <Stat label="Active courses" value={data()?.progress.length ?? 0} />
+        <Stat label="Budget" value={data()?.plan.budgetMinutes ?? 0} sub="min / day" />
+      </section>
+
+      <section>
+        <h2 class="mb-3 font-serif text-heading-sm font-bold text-true-black">Courses</h2>
+        <Show
+          when={data()?.progress.length}
+          fallback={
+            <div class="rounded-lg border border-dashed border-ash bg-pure-white/50 p-8 text-center text-stone">
+              No courses imported. Visit <A href="/admin" class="text-moss underline">admin</A> to import.
+            </div>
+          }
+        >
+          <ul class="space-y-3">
+            <For each={data()!.progress}>
+              {({ course, total, done, minutesTotal, minutesDone }) => {
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                return (
+                  <li class="flex items-center gap-5 rounded-lg border border-fog bg-pure-white p-5">
+                    <Show when={course.imageUrl}>
+                      <img src={fileUrl(course.imageUrl) ?? ''} alt="" class="h-16 w-16 rounded-lg border border-fog object-cover" />
+                    </Show>
+                    <div class="min-w-0 flex-1">
+                      <A href={`/courses/${course.slug}`} class="font-medium text-true-black hover:text-moss">
+                        {course.courseNumber ? `${course.courseNumber} — ` : ''}{course.title}
+                      </A>
+                      <div class="tabular mt-0.5 text-xs text-stone">
+                        {done}/{total} items · {minutesDone}m / {minutesTotal}m
+                      </div>
+                      <div class="mt-2 h-1.5 overflow-hidden rounded-pill bg-fog">
+                        <div class="h-full bg-moss" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <div class="tabular font-serif text-2xl text-midnight-ink">{pct}%</div>
+                  </li>
+                );
+              }}
+            </For>
+          </ul>
+        </Show>
       </section>
     </div>
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: number; sub?: string }) {
+function Stat(props: { label: string; value: number; sub?: string }) {
   return (
-    <div className="bg-white border border-ink-200 rounded-xl p-5">
-      <div className="text-xs uppercase tracking-wide text-ink-500">{label}</div>
-      <div className="mt-1 text-3xl font-serif tabular">{value}</div>
-      {sub && <div className="text-xs text-ink-500">{sub}</div>}
-    </div>
+    <Card>
+      <div class="eyebrow">{props.label}</div>
+      <div class="tabular mt-1 font-serif text-3xl text-true-black">{props.value}</div>
+      <Show when={props.sub}>
+        <div class="text-xs text-stone">{props.sub}</div>
+      </Show>
+    </Card>
   );
 }

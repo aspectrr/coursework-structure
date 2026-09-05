@@ -1,48 +1,107 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root { color-scheme: light; }
+/* Scan feedback-widget's hardcoded Tailwind classes so they don't get purged */
+@source "../node_modules/@aspectrr/feedback-widget";
 
-html, body {
-  background: #f7f7f5;
-  color: #1c1a16;
+/*
+ * SavvyCal style system (DESIGN.md / refero): forest-green stage + cream paper,
+ * serif display headlines (GT Alpina → Playfair Display), grotesk body
+ * (GT America → Inter), lime = only interactive fill, coral = decorative stroke only.
+ */
+@theme {
+  /* Colors */
+  --color-forest-stage: #0d542b;
+  --color-lime-sprout: #b9ff78;
+  --color-ember-coral: #f54320;
+  --color-coral-whisper: #ffe3e3;
+  --color-cream-paper: #fcf7ed;
+  --color-true-black: #000000;
+  --color-midnight-ink: #1c1917;
+  --color-stone: #44403b;
+  --color-slate: #292524;
+  --color-ash: #d6d3d1;
+  --color-fog: #e5e7eb;
+  --color-pure-white: #ffffff;
+  --color-moss: #008236;
+
+  /* Typography */
+  --font-serif: "Playfair Display", Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-caption: 0.625rem;
+  --text-caption--line-height: 1;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.43;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5;
+  --text-subheading: 1.25rem;
+  --text-subheading--line-height: 1.5;
+  --text-heading-sm: 1.5rem;
+  --text-heading-sm--line-height: 1.33;
+  --text-heading: 1.875rem;
+  --text-heading--line-height: 1.38;
+  --text-heading-lg: 2.375rem;
+  --text-heading-lg--line-height: 1.38;
+
+  /* Radii — 8px functional components, 24px product frames, pills 9999px */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.5rem;
+  --radius-frame: 1.5rem;
+  --radius-pill: 9999px;
+
+  /* Layout */
+  --spacing-page: 75rem; /* 1200px max-width */
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-cream-paper);
+  color: var(--color-stone);
+  font-family: var(--font-sans);
+  letter-spacing: -0.007em;
+  font-feature-settings: "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-body {
-  background-image: radial-gradient(rgba(116, 105, 82, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
+::selection {
+  background: var(--color-lime-sprout);
+  color: var(--color-midnight-ink);
 }
-
-::selection { background: #e89373; color: #1c1a16; }
 
 .tabular {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum';
+  font-feature-settings: "tnum";
 }
 
-.cbox {
-  appearance: none;
-  width: 18px; height: 18px;
-  border-radius: 5px;
-  border: 1.5px solid #b8ad97;
-  background: #fff;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  position: relative;
-  top: 1px;
+/* Section eyebrow: small-caps label with the hand-drawn coral wavy underline */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-midnight-ink);
 }
-.cbox:hover { border-color: #c75b39; }
-.cbox:checked { background: #c75b39; border-color: #c75b39; }
-.cbox:checked::after {
-  content: '';
-  position: absolute;
-  left: 4px; top: 0px;
-  width: 6px; height: 11px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+
+.eyebrow-wave {
+  display: block;
+  width: 60%;
+  height: 5px;
+  margin-top: 2px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='5' viewBox='0 0 60 5'%3E%3Cpath d='M0 3 Q 3.75 0.5 7.5 3 T 15 3 T 22.5 3 T 30 3 T 37.5 3 T 45 3 T 52.5 3 T 60 3' fill='none' stroke='%23f54320' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Product-frame: 2px coral border, 24px radius, warm coral shadow — the one allowed shadow */
+.frame-coral {
+  border: 2px solid var(--color-ember-coral);
+  border-radius: var(--radius-frame);
+  box-shadow: 0 24px 48px rgba(245, 67, 32, 0.15);
 }
