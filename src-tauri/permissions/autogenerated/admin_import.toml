@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-admin-import"
+description = "Enables the admin_import command without any pre-configured scope."
+commands.allow = ["admin_import"]
+
+[[permission]]
+identifier = "deny-admin-import"
+description = "Denies the admin_import command without any pre-configured scope."
+commands.deny = ["admin_import"]
