@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-video-notes-update"
+description = "Enables the video_notes_update command without any pre-configured scope."
+commands.allow = ["video_notes_update"]
+
+[[permission]]
+identifier = "deny-video-notes-update"
+description = "Denies the video_notes_update command without any pre-configured scope."
+commands.deny = ["video_notes_update"]

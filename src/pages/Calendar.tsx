@@ -1,60 +1,74 @@
-import { useEffect, useState } from 'react';
+import { createResource, For, Show } from 'solid-js';
 import { api, type CalendarView } from '@/lib/api';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function Calendar() {
-  const [data, setData] = useState<CalendarView | null>(null);
-  useEffect(() => { api.calendarGet().then(setData).catch(console.error); }, []);
-  if (!data) return <div className="text-ink-500">Loading…</div>;
+  const [data] = createResource<CalendarView>(api.calendarGet);
 
   const intensity = (m: number) =>
-    m === 0 ? 'bg-ink-100' : m < 30 ? 'bg-accent-soft/60' : m < 60 ? 'bg-accent-soft' : 'bg-accent';
+    m === 0 ? 'bg-fog' : m < 30 ? 'bg-moss/30' : m < 60 ? 'bg-moss/60' : 'bg-moss';
 
   return (
-    <div className="space-y-8">
-      <h1 className="font-serif text-3xl">Calendar</h1>
+    <div class="space-y-8">
+      <div>
+        <span class="eyebrow">Activity log</span>
+        <span class="eyebrow-wave" />
+      </div>
+      <h1 class="font-serif text-heading font-bold text-true-black">Calendar</h1>
 
-      <section className="bg-white border border-ink-200 rounded-xl p-5">
-        <div className="text-sm text-ink-600 mb-3">last 8 weeks · minutes logged</div>
-        <div className="grid grid-cols-8 gap-1">
-          {Array.from({ length: 7 }).map((_, row) =>
-            Array.from({ length: 8 }).map((_, col) => {
-              const idx = col * 7 + row;
-              const cell = data.days[idx];
-              if (!cell) return <div key={`${row}-${col}`} />;
-              return (
-                <div
-                  key={cell.date}
-                  title={`${cell.date} · ${cell.minutes}m`}
-                  className={`aspect-square rounded-sm border border-ink-100 ${cell.future ? 'bg-ink-50 opacity-40' : intensity(cell.minutes)}`}
-                />
-              );
-            }),
-          )}
+      <Card class="space-y-3">
+        <div class="text-body-sm text-stone">last 8 weeks · minutes logged</div>
+        <div class="grid grid-cols-8 gap-1">
+          <For each={[0, 1, 2, 3, 4, 5, 6]}>
+            {(row) => (
+              <For each={[0, 1, 2, 3, 4, 5, 6, 7]}>
+                {(col) => {
+                  const cell = () => data()?.days[col * 7 + row];
+                  return (
+                    <Show when={cell()} fallback={<div />}>
+                      <div
+                        title={`${cell()!.date} · ${cell()!.minutes}m`}
+                        class={cn(
+                          'aspect-square rounded-[2px] border border-fog/60',
+                          cell()!.future ? 'bg-fog/30' : intensity(cell()!.minutes),
+                        )}
+                      />
+                    </Show>
+                  );
+                }}
+              </For>
+            )}
+          </For>
         </div>
-        <div className="mt-4 text-xs text-ink-500 flex items-center gap-2">
+        <div class="flex items-center gap-2 text-xs text-stone">
           less
-          <span className="w-3 h-3 bg-ink-100 rounded-sm" />
-          <span className="w-3 h-3 bg-accent-soft rounded-sm" />
-          <span className="w-3 h-3 bg-accent rounded-sm" />
+          <span class="h-3 w-3 rounded-[2px] bg-fog" />
+          <span class="h-3 w-3 rounded-[2px] bg-moss/30" />
+          <span class="h-3 w-3 rounded-[2px] bg-moss/60" />
+          <span class="h-3 w-3 rounded-[2px] bg-moss" />
           more
         </div>
-      </section>
+      </Card>
 
       <section>
-        <h2 className="font-serif text-xl mb-3">Recent sessions</h2>
-        {data.recent.length === 0 ? (
-          <p className="text-sm text-ink-500">No activity yet. Mark items as complete to populate this.</p>
-        ) : (
-          <ul className="bg-white border border-ink-200 rounded-xl divide-y divide-ink-100">
-            {data.recent.map((r) => (
-              <li key={r.date} className="px-5 py-2.5 flex items-baseline gap-4 text-sm tabular">
-                <span className="text-ink-700 w-28">{r.date}</span>
-                <span className="text-ink-900">{r.minutes}m</span>
-                <span className="text-ink-500">{r.items} item{r.items === 1 ? '' : 's'}</span>
-              </li>
-            ))}
+        <h2 class="mb-3 font-serif text-heading-sm font-bold text-true-black">Recent sessions</h2>
+        <Show
+          when={data()?.recent.length}
+          fallback={<p class="text-body-sm text-stone">No activity yet. Mark items as complete to populate this.</p>}
+        >
+          <ul class="divide-y divide-fog rounded-lg border border-fog bg-pure-white">
+            <For each={data()!.recent}>
+              {(r) => (
+                <li class="tabular flex items-baseline gap-4 px-5 py-2.5 text-body-sm">
+                  <span class="w-28 text-midnight-ink">{r.date}</span>
+                  <span class="text-true-black">{r.minutes}m</span>
+                  <span class="text-stone">{r.items} item{r.items === 1 ? '' : 's'}</span>
+                </li>
+              )}
+            </For>
           </ul>
-        )}
+        </Show>
       </section>
     </div>
   );

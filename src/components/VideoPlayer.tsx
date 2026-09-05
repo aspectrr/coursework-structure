@@ -1,4 +1,4 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import { createEffect, onCleanup } from 'solid-js';
 
 // Minimal YouTube IFrame API typings
 declare global {
@@ -15,56 +15,66 @@ export interface PlayerHandle {
   play: () => void;
 }
 
-type Props = { videoId: string };
-
 let apiPromise: Promise<void> | null = null;
 function loadApi(): Promise<void> {
   if (apiPromise) return apiPromise;
   apiPromise = new Promise<void>((resolve) => {
     if (window.YT && window.YT.Player) return resolve();
     const prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => { prev?.(); resolve(); };
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
   });
   return apiPromise;
 }
 
-export const VideoPlayer = forwardRef<PlayerHandle, Props>(function VideoPlayer({ videoId }, ref) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
-  const [ready, setReady] = useState(false);
+export function VideoPlayer(props: { videoId: string; onReady?: (h: PlayerHandle) => void }) {
+  let wrapper!: HTMLDivElement;
+  let yt: any;
 
-  useImperativeHandle(ref, () => ({
-    seekTo: (sec: number) => playerRef.current?.seekTo(sec, true),
-    getCurrentTime: () => playerRef.current?.getCurrentTime?.() ?? null,
-    pause: () => playerRef.current?.pauseVideo?.(),
-    play: () => playerRef.current?.playVideo?.(),
-  }));
+  // Stable handle — reads the current player through closure, safe across reloads
+  const handle: PlayerHandle = {
+    seekTo: (sec) => yt?.seekTo(sec, true),
+    getCurrentTime: () => yt?.getCurrentTime?.() ?? null,
+    pause: () => yt?.pauseVideo?.(),
+    play: () => yt?.playVideo?.(),
+  };
 
-  useEffect(() => {
+  // YT.Player replaces the element you give it with an iframe, so mount a
+  // throwaway inner div per instance instead of handing over the wrapper.
+  createEffect(() => {
+    const videoId = props.videoId;
     let cancelled = false;
+    let created: any;
     loadApi().then(() => {
-      if (cancelled || !containerRef.current) return;
-      playerRef.current = new window.YT.Player(containerRef.current, {
+      if (cancelled) return;
+      const el = document.createElement('div');
+      wrapper.appendChild(el);
+      created = new window.YT.Player(el, {
         videoId,
         height: '100%',
         width: '100%',
         playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-        events: { onReady: () => setReady(true) },
+        events: {
+          onReady: () => {
+            yt = created;
+            props.onReady?.(handle);
+          },
+        },
       });
     });
-    return () => {
+    onCleanup(() => {
       cancelled = true;
-      playerRef.current?.destroy?.();
-      playerRef.current = null;
-    };
-  }, [videoId]);
+      created?.destroy?.();
+      yt = undefined;
+      wrapper.innerHTML = '';
+    });
+  });
 
   return (
-    <div className="aspect-video bg-black rounded-lg overflow-hidden">
-      <div ref={containerRef} />
-      {!ready && (
-        <div className="text-white/60 text-xs p-4 -mt-1">Loading player…</div>
-      )}
+    <div class="aspect-video bg-true-black">
+      <div ref={wrapper} class="h-full w-full" />
     </div>
   );
-});
+}

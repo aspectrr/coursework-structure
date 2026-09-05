@@ -1,44 +1,58 @@
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import Today from './pages/Today';
-import Calendar from './pages/Calendar';
-import Admin from './pages/Admin';
-import CourseDetail from './pages/CourseDetail';
-import ItemPlayer from './pages/ItemPlayer';
+import type { RouteSectionProps } from '@solidjs/router';
+import { A, useLocation } from '@solidjs/router';
+import { For, Show } from 'solid-js';
+import { FeedbackWidget } from '@aspectrr/feedback-widget';
+import { cn } from '@/lib/utils';
 
-export default function App() {
-  return (
-    <div className="min-h-screen font-sans antialiased">
-      <Header />
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/courses/:slug" element={<CourseDetail />} />
-          <Route path="/courses/:slug/items/:id" element={<ItemPlayer />} />
-        </Routes>
-      </main>
-    </div>
-  );
-}
+// Two-zone rhythm from the style system: forest-stage nav bar (ZONE A) over
+// cream-paper content (ZONE B). Lime is the only interactive fill; coral is
+// decorative-only and never appears as a fill.
+export default function App(props: RouteSectionProps) {
+  const pathname = () => useLocation().pathname;
 
-function Header() {
-  const { pathname } = useLocation();
-  const nav = (path: string, label: string) => (
-    <Link to={path} className={`hover:text-accent ${pathname === path ? 'text-accent' : ''}`}>{label}</Link>
+  const pill = (path: string, label: string) => (
+    <A
+      href={path}
+      class={cn(
+        'rounded-pill px-3 py-1 text-body-sm transition-colors',
+        pathname() === path
+          ? 'bg-lime-sprout font-medium text-midnight-ink'
+          : 'text-cream-paper/80 hover:text-pure-white',
+      )}
+    >
+      {label}
+    </A>
   );
+
   return (
-    <header className="border-b border-ink-200 bg-ink-50/80 backdrop-blur sticky top-0 z-10">
-      <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-6">
-        <Link to="/" className="font-serif text-xl tracking-tight">coursework</Link>
-        <nav className="flex gap-4 text-sm text-ink-700">
-          {nav('/', 'Today')}
-          {nav('/calendar', 'Calendar')}
-        </nav>
-        <div className="ml-auto text-xs text-ink-500">
-          <Link to="/admin" className={`hover:text-accent ${pathname === '/admin' ? 'text-accent' : ''}`}>admin</Link>
+    <div class="min-h-screen font-sans antialiased">
+      <header class="sticky top-0 z-10 border-b border-midnight-ink/40 bg-forest-stage">
+        <div class="mx-auto flex max-w-page items-center gap-6 px-6 py-3">
+          <nav class="flex items-center gap-1">
+            {pill('/', 'Today')}
+            {pill('/calendar', 'Calendar')}
+          </nav>
+          <div class="ml-auto">
+            <A
+              href="/admin"
+              class={cn(
+                'rounded-lg border-[1.5px] px-5 py-2 text-body-sm transition-colors',
+                pathname() === '/admin'
+                  ? 'border-lime-sprout text-lime-sprout'
+                  : 'border-pure-white/90 text-pure-white hover:bg-pure-white hover:text-forest-stage',
+              )}
+            >
+              admin
+            </A>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <main class="mx-auto max-w-page px-6 py-8">
+        {props.children}
+      </main>
+
+      <FeedbackWidget source="coursework" server="https://aspectrr-feedback.fly.dev" />
+    </div>
   );
 }

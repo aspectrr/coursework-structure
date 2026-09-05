@@ -1,45 +1,53 @@
-import { useEffect, useRef, useState } from 'react';
+import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { api, fmtTime, type VideoNote } from '@/lib/api';
 import type { PlayerHandle } from './VideoPlayer';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 type Props = {
   itemId: string;
-  playerRef: React.RefObject<PlayerHandle | null>;
+  player: () => PlayerHandle | undefined;
   hasVideo: boolean;
 };
 
-export default function NoteStream({ itemId, playerRef, hasVideo }: Props) {
-  const [notes, setNotes] = useState<VideoNote[]>([]);
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const taRef = useRef<HTMLTextAreaElement>(null);
+export default function NoteStream(props: Props) {
+  const [notes, setNotes] = createSignal<VideoNote[]>([]);
+  const [draft, setDraft] = createSignal('');
+  const [editing, setEditing] = createSignal<string | null>(null);
+  const [editValue, setEditValue] = createSignal('');
 
-  async function load() {
-    try { setNotes(await api.videoNotesList(itemId)); }
-    catch (e) { console.error(e); }
-  }
-  useEffect(() => { load(); }, [itemId]);
+  let pauseTimer: ReturnType<typeof setTimeout> | undefined;
+
+  onCleanup(() => {
+    if (pauseTimer) clearTimeout(pauseTimer);
+  });
+
+  onMount(async () => {
+    try {
+      setNotes(await api.videoNotesList(props.itemId));
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   function pauseWhileTyping() {
-    playerRef.current?.pause?.();
-    if (pauseTimer.current) clearTimeout(pauseTimer.current);
-    pauseTimer.current = setTimeout(() => playerRef.current?.play?.(), 1500);
+    props.player()?.pause?.();
+    if (pauseTimer) clearTimeout(pauseTimer);
+    pauseTimer = setTimeout(() => props.player()?.play?.(), 1500);
   }
 
   async function create() {
-    const trimmed = draft.trim();
+    const trimmed = draft().trim();
     if (!trimmed) return;
-    const t = hasVideo ? playerRef.current?.getCurrentTime?.() ?? null : null;
+    const t = props.hasVideo ? props.player()?.getCurrentTime?.() ?? null : null;
     const secs = t != null ? Math.floor(t) : null;
-    const created = await api.videoNotesCreate(itemId, trimmed, secs);
+    const created = await api.videoNotesCreate(props.itemId, trimmed, secs);
     setNotes((prev) => insertSorted(prev, created));
     setDraft('');
   }
 
   async function saveEdit(id: string) {
-    const v = editValue.trim();
+    const v = editValue().trim();
     if (!v) return;
     await api.videoNotesUpdate(id, v);
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, content: v } : n)));
@@ -53,83 +61,100 @@ export default function NoteStream({ itemId, playerRef, hasVideo }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-baseline justify-between mb-2">
-        <h3 className="font-serif text-lg">Timestamped notes</h3>
-        <span className="text-xs text-ink-500">{notes.length}</span>
+    <div class="flex h-full flex-col">
+      <div class="mb-2 flex items-baseline justify-between">
+        <h3 class="font-serif text-lg font-bold text-true-black">Timestamped notes</h3>
+        <span class="tabular text-xs text-stone">{notes().length}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-        {notes.length === 0 && (
-          <p className="text-sm text-ink-500 italic py-4">
-            {hasVideo ? 'Press Enter to drop a note — it captures the current video time.' : 'Notes for this item.'}
+      <div class="flex-1 space-y-2 overflow-y-auto pr-1">
+        <Show when={notes().length} fallback={
+          <p class="py-4 text-body-sm italic text-stone">
+            {props.hasVideo
+              ? 'Press Enter to drop a note — it captures the current video time.'
+              : 'Notes for this item.'}
           </p>
-        )}
-        {notes.map((n) => (
-          <div key={n.id} className="bg-white border border-ink-200 rounded-md p-3 text-sm">
-            <div className="flex items-baseline gap-2 mb-1">
-              {n.videoTimeSeconds != null ? (
-                <button
-                  onClick={() => hasVideo && playerRef.current?.seekTo(n.videoTimeSeconds!)}
-                  className="text-xs font-mono text-accent hover:underline"
-                  title="Seek to this moment"
+        }>
+          <For each={notes()}>
+            {(n) => (
+              <div class="rounded-lg border border-fog bg-pure-white p-3 text-body-sm">
+                <div class="mb-1 flex items-baseline gap-2">
+                  <Show
+                    when={n.videoTimeSeconds != null}
+                    fallback={<span class="font-mono text-xs text-ash">no-time</span>}
+                  >
+                    <button
+                      onClick={() => props.hasVideo && props.player()?.seekTo(n.videoTimeSeconds!)}
+                      class="tabular font-mono text-xs text-moss hover:underline"
+                      title="Seek to this moment"
+                    >
+                      ▶ {fmtTime(n.videoTimeSeconds)}
+                    </button>
+                  </Show>
+                  <span class="ml-auto text-xs text-ash">{new Date(n.createdAt).toLocaleString()}</span>
+                </div>
+                <Show
+                  when={editing() === n.id}
+                  fallback={
+                    <>
+                      <p class="whitespace-pre-wrap font-mono leading-relaxed text-midnight-ink">{n.content}</p>
+                      <div class="mt-1 flex gap-2 text-xs">
+                        <button
+                          onClick={() => {
+                            setEditing(n.id);
+                            setEditValue(n.content);
+                          }}
+                          class="text-stone hover:text-moss"
+                        >
+                          edit
+                        </button>
+                        <button onClick={() => remove(n.id)} class="text-stone hover:text-ember-coral">
+                          delete
+                        </button>
+                      </div>
+                    </>
+                  }
                 >
-                  ▶ {fmtTime(n.videoTimeSeconds)}
-                </button>
-              ) : (
-                <span className="text-xs text-ink-400 font-mono">no-time</span>
-              )}
-              <span className="text-xs text-ink-400 ml-auto">
-                {new Date(n.createdAt).toLocaleString()}
-              </span>
-            </div>
-            {editing === n.id ? (
-              <div className="space-y-2">
-                <textarea
-                  ref={taRef}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full font-mono text-sm border border-ink-200 rounded p-2"
-                  rows={3}
-                />
-                <div className="flex gap-2">
-                  <button onClick={() => saveEdit(n.id)} className="text-xs px-2 py-1 bg-accent text-white rounded">save</button>
-                  <button onClick={() => setEditing(null)} className="text-xs px-2 py-1 border border-ink-300 rounded">cancel</button>
-                </div>
+                  <div class="space-y-2">
+                    <Textarea value={editValue()} onInput={(e) => setEditValue(e.currentTarget.value)} rows={3} />
+                    <div class="flex gap-2">
+                      <Button size="sm" onClick={() => saveEdit(n.id)}>save</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>cancel</Button>
+                    </div>
+                  </div>
+                </Show>
               </div>
-            ) : (
-              <>
-                <p className="whitespace-pre-wrap font-mono leading-relaxed">{n.content}</p>
-                <div className="flex gap-2 mt-1 text-xs">
-                  <button onClick={() => { setEditing(n.id); setEditValue(n.content); }} className="text-ink-500 hover:text-accent">edit</button>
-                  <button onClick={() => remove(n.id)} className="text-ink-500 hover:text-red-700">delete</button>
-                </div>
-              </>
             )}
-          </div>
-        ))}
+          </For>
+        </Show>
       </div>
 
-      <div className="pt-3 border-t border-ink-200 mt-3">
-        <textarea
-          value={draft}
-          onChange={(e) => { setDraft(e.target.value); hasVideo && pauseWhileTyping(); }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); create(); }
+      <div class="mt-3 border-t border-fog pt-3">
+        <Textarea
+          value={draft()}
+          onInput={(e) => {
+            setDraft(e.currentTarget.value);
+            if (props.hasVideo) pauseWhileTyping();
           }}
-          placeholder={hasVideo ? 'Type a note — Enter (⌘/Ctrl) to capture at current video time' : 'Type a note — Enter (⌘/Ctrl) to save'}
-          className="w-full font-mono text-sm p-3 border border-ink-200 rounded-md bg-white focus:outline-none focus:border-accent resize-none"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              create();
+            }
+          }}
+          placeholder={
+            props.hasVideo
+              ? 'Type a note — Enter (⌘/Ctrl) to capture at current video time'
+              : 'Type a note — Enter (⌘/Ctrl) to save'
+          }
           rows={3}
+          class="resize-none"
         />
-        <div className="flex items-center justify-between mt-2 text-xs text-ink-500">
-          <span>{hasVideo ? `t = ${fmtTime(playerRef.current?.getCurrentTime?.() ?? null)}` : ''}</span>
-          <button
-            onClick={create}
-            disabled={!draft.trim()}
-            className="px-3 py-1 bg-accent text-white rounded disabled:opacity-50"
-          >
+        <div class="tabular mt-2 flex items-center justify-between text-xs text-stone">
+          <span>{props.hasVideo ? `t = ${fmtTime(props.player()?.getCurrentTime?.() ?? null)}` : ''}</span>
+          <Button size="sm" onClick={create} disabled={!draft().trim()}>
             add note
-          </button>
+          </Button>
         </div>
       </div>
     </div>

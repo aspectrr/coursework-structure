@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-course-detail"
+description = "Enables the course_detail command without any pre-configured scope."
+commands.allow = ["course_detail"]
+
+[[permission]]
+identifier = "deny-course-detail"
+description = "Denies the course_detail command without any pre-configured scope."
+commands.deny = ["course_detail"]

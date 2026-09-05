@@ -1,166 +1,132 @@
 #!/usr/bin/env python3
 """
-Generate the Coursework desktop app icon: a graduation cap (mortarboard)
-on a warm cream rounded-square background, with the app's accent orange
-tassel. Matches the app's ink + paper + accent visual language.
+Generate the Coursework desktop app icon per DESIGN.md (SavvyCal style):
+forest-stage squircle with a radial forest→moss gradient and concentric
+arcs (hero background motif), a cream editorial-serif "cw" monogram
+(Playfair Display Bold, vendored OFL font) with a lime-sprout period and
+the signature coral wavy underline.
+
+Icon geometry follows the Apple macOS icon grid: 824×824 artwork inside a
+1024×1024 canvas (~100px transparent margins), so the icon matches every
+other app's optical size in the Dock instead of rendering oversized.
 
 Run: python3 scripts/make-icon.py
 Outputs: src-tauri/icons/app-icon.png (1024x1024 RGBA master)
 """
-from PIL import Image, ImageDraw, ImageFilter
-import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+import math
 import os
 
-W = H = 1024
-CREAM = (247, 247, 245)         # ink-50 (app bg)
-CREAM_EDGE = (216, 209, 196)    # ink-200 (border tone)
-INK = (28, 26, 22)              # ink-900
-INK_SOFT = (75, 68, 57)         # ink-700
-ACCENT = (199, 91, 57)          # accent
-ACCENT_DIM = (139, 61, 36)      # accent-dim
-SHADOW = (28, 26, 22, 60)
+CANVAS = 1024
+SS = 2  # supersample factor
+W = H = CANVAS * SS
 
-def lerp(a, b, t):
-    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(len(a)))
+# DESIGN.md palette
+FOREST = (13, 84, 43)        # --color-forest-stage
+MOSS = (0, 130, 54)          # --color-moss
+LIME = (185, 255, 120)       # --color-lime-sprout
+CORAL = (245, 67, 32)        # --color-ember-coral
+CREAM = (252, 247, 237)      # --color-cream-paper
 
-def rounded_gradient_bg(size, radius, top, bottom):
-    """Vertical gradient inside a rounded square."""
-    # build gradient via numpy
-    t = np.linspace(0, 1, size).reshape(-1, 1)
-    top_arr = np.array(top, dtype=np.float32)
-    bot_arr = np.array(bottom, dtype=np.float32)
-    row = top_arr * (1 - t) + bot_arr * t           # (size, 3)
-    grad_rgb = np.broadcast_to(row[:, None, :], (size, size, 3)).astype(np.uint8)
-    alpha = np.full((size, size, 1), 255, dtype=np.uint8)
-    grad = np.concatenate([grad_rgb, alpha], axis=2)
-    img = Image.fromarray(grad, "RGBA")
+# macOS icon grid: artwork occupies the central 824/1024 of the canvas
+ART = int(CANVAS * 0.805 * SS)          # 824 @2x
+MARGIN = (W - ART) // 2
+SQUIRCLE_RADIUS = int(ART * 0.2237)     # Apple big-sur corner ratio
 
-    # mask to rounded square
-    mask = Image.new("L", (size, size), 0)
-    md = ImageDraw.Draw(mask)
-    md.rounded_rectangle((0, 0, size - 1, size - 1), radius=radius, fill=255)
-    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    out.paste(img, (0, 0), mask)
-    return out, mask
+HERE = os.path.dirname(os.path.abspath(__file__))
+FONT_PATH = os.path.join(HERE, "fonts", "PlayfairDisplay.ttf")
 
-def draw_mortarboard(img, cx, cy, board_w, board_h):
-    """Draw a graduation cap (mortarboard only, no head/body) centered at (cx, cy).
 
-    The board is the universal graduation symbol; adding a head underneath
-    reads as noise at icon sizes.
-    """
-    d = ImageDraw.Draw(img, "RGBA")
+def radial_gradient(size, inner, outer, center, radius):
+    """RGB radial gradient (PIL built-in mask, no numpy) as a PIL image."""
+    t = Image.radial_gradient("L").resize((size, size), Image.BICUBIC)
+    inner_img = Image.new("RGB", (size, size), inner)
+    outer_img = Image.new("RGB", (size, size), outer)
+    return Image.composite(outer_img, inner_img, t)
 
-    # ---- soft shadow under cap ----
-    shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow_layer)
-    sd.ellipse(
-        (cx - int(board_w * 0.42), cy + board_h // 2 + int(board_h * 0.08),
-         cx + int(board_w * 0.42), cy + board_h // 2 + int(board_h * 0.08) + 50),
-        fill=(0, 0, 0, 60),
-    )
-    shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(26))
-    img.alpha_composite(shadow_layer)
-
-    # ---- mortarboard (diamond / rotated square) ----
-    # perspective: top edge narrower than bottom edge for slight 3D feel
-    half_w = board_w // 2
-    top_y = cy - board_h // 2
-    bot_y = cy + board_h // 2
-    top_inset = int(half_w * 0.18)  # top edge slightly narrower
-    board = [
-        (cx - half_w, cy),               # left point
-        (cx - top_inset, top_y),         # top-left
-        (cx + top_inset, top_y),         # top-right
-        (cx + half_w, cy),               # right point
-        (cx + top_inset, bot_y),         # bottom-right
-        (cx - top_inset, bot_y),         # bottom-left
-    ]
-    d.polygon(board, fill=INK)
-
-    # top-edge highlight for bevel
-    d.line(
-        [(cx - top_inset, top_y), (cx + top_inset, top_y)],
-        fill=lerp(INK, (255, 255, 255), 0.20) + (255,), width=8,
-    )
-    # bottom-edge shadow for depth
-    d.line(
-        [(cx - top_inset, bot_y), (cx + top_inset, bot_y)],
-        fill=lerp(INK, (0, 0, 0), 0.4) + (255,), width=6,
-    )
-
-    # ---- center button on the board (where tassel attaches) ----
-    button_r = int(board_w * 0.05)
-    d.ellipse(
-        (cx - button_r, cy - button_r, cx + button_r, cy + button_r),
-        fill=ACCENT,
-    )
-
-    # ---- tassel: cord from button, sweeping right then hanging straight down ----
-    cord_w = max(8, int(board_w * 0.026))
-    cord_pts = []
-    # Phase 1: bezier sweep from button out past the right edge of the board
-    for i in range(0, 81):
-        t = i / 80
-        x0, y0 = cx, cy
-        x1, y1 = cx + half_w * 0.80, cy - board_h * 0.05  # control: out, roughly level
-        x2, y2 = cx + half_w * 1.04, cy + board_h * 0.12   # end: just past right point
-        x = (1 - t) ** 2 * x0 + 2 * (1 - t) * t * x1 + t * t * x2
-        y = (1 - t) ** 2 * y0 + 2 * (1 - t) * t * y1 + t * t * y2
-        cord_pts.append((x, y))
-    # Phase 2: dangle straight down
-    dangle_top = cord_pts[-1]
-    dangle_bot_y = cy + int(board_h * 0.55)
-    steps = 24
-    for i in range(1, steps + 1):
-        t = i / steps
-        cord_pts.append((dangle_top[0], dangle_top[1] + t * (dangle_bot_y - dangle_top[1])))
-
-    for i in range(len(cord_pts) - 1):
-        d.line([cord_pts[i], cord_pts[i + 1]], fill=ACCENT, width=cord_w)
-
-    # ---- tassel fringe at the bottom ----
-    fringe_top = cord_pts[-1]
-    fringe_len = int(board_w * 0.16)
-    strand_w = max(3, cord_w - 3)
-    # knot band just above the fringe
-    knot_h = max(10, cord_w + 6)
-    d.rounded_rectangle(
-        (fringe_top[0] - cord_w * 1.3, fringe_top[1] - knot_h // 2,
-         fringe_top[0] + cord_w * 1.3, fringe_top[1] + knot_h // 2),
-        radius=knot_h // 2, fill=ACCENT_DIM,
-    )
-    # bundled strands fanning slightly outward
-    for k in range(-4, 5):
-        offset = k * max(2, strand_w // 2 + 1)
-        d.line(
-            [(fringe_top[0] + offset, fringe_top[1]),
-             (fringe_top[0] + offset + (k * 2), fringe_top[1] + fringe_len)],
-            fill=ACCENT, width=strand_w,
-        )
 
 def main():
-    img, _mask = rounded_gradient_bg(W, int(W * 0.2237), CREAM, lerp(CREAM, (238, 234, 227), 1.0))
-    # subtle inner border for definition on light backgrounds
+    # ---- forest-stage squircle with radial forest→moss gradient ----
+    grad = radial_gradient(
+        W, FOREST, MOSS,
+        center=(W * 0.5, W * 0.42),          # slightly high center, like the hero
+        radius=W * 0.75,
+    )
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        (MARGIN, MARGIN, MARGIN + ART, MARGIN + ART), radius=SQUIRCLE_RADIUS, fill=255
+    )
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    img.paste(grad, (0, 0), mask)
+
     d = ImageDraw.Draw(img, "RGBA")
-    d.rounded_rectangle(
-        (0, 0, W - 1, H - 1), radius=int(W * 0.2237),
-        outline=CREAM_EDGE, width=4,
-    )
 
-    # mortarboard sized to fill ~70% of icon
-    cx, cy = W // 2, int(H * 0.44)
-    draw_mortarboard(
-        img,
-        cx=cx, cy=cy,
-        board_w=int(W * 0.74),
-        board_h=int(H * 0.36),
-    )
+    # ---- concentric arcs (hero background spiral motif) ----
+    # separate layer + alpha_composite: reliable alpha blending
+    arcs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ad = ImageDraw.Draw(arcs)
+    cx, cy = W // 2, int(W * 0.42)
+    for r in range(int(W * 0.18), int(W * 0.62), int(W * 0.055)):
+        ad.ellipse(
+            (cx - r, cy - r, cx + r, cy + r),
+            outline=CREAM + (10,),
+            width=max(2, SS * 2),
+        )
+    img.alpha_composite(arcs)
+    d = ImageDraw.Draw(img, "RGBA")
 
-    out_dir = "src-tauri/icons"
+    # ---- serif monogram "cw" + lime period ----
+    font = ImageFont.truetype(FONT_PATH, int(W * 0.38))
+    font.set_variation_by_name("Bold")
+
+    def text_len(s, f):
+        b = d.textbbox((0, 0), s, font=f)
+        return b[2] - b[0]
+
+    # optical centering: serif baseline sits slightly high
+    tx, ty = W // 2, int(H * 0.475)
+    len_cw = text_len("cw", font)
+    dot = "."
+    dot_font = ImageFont.truetype(FONT_PATH, int(W * 0.22))
+    dot_font.set_variation_by_name("Bold")
+    len_dot = text_len(dot, dot_font)
+    gap = int(W * 0.005)
+    total = len_cw + gap + len_dot
+    x0 = tx - total // 2
+
+    # letters need manual y-offset: textbbox measures from ascender line
+    b = d.textbbox((0, 0), "cw", font=font)
+    d.text((x0 - b[0], ty - b[3]), "cw", font=font, fill=CREAM + (255,))
+    bd = d.textbbox((0, 0), dot, font=dot_font)
+    # baseline-align the period with the letters (bbox bottom ≈ baseline, no descenders)
+    d.text((x0 + len_cw + gap - bd[0], ty - bd[3]), dot, font=dot_font, fill=LIME + (255,))
+
+    # ---- coral wavy underline (signature micro-pattern) ----
+    wave_w = int(total * 0.6)
+    wave_x0 = tx - wave_w // 2
+    wave_y = ty + int(W * 0.035)
+    amp = int(W * 0.008)
+    period = int(W * 0.028)
+    stroke = max(4, int(W * 0.007))
+    pts = []
+    for i in range(0, wave_w + 1, 4):
+        x = wave_x0 + i
+        y = wave_y + amp * math.sin(2 * math.pi * i / period)
+        pts.append((x, y))
+    # soft coral glow under the stroke, then the stroke itself
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).line(pts, fill=CORAL + (110,), width=stroke * 3)
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(stroke)))
+    d.line(pts, fill=CORAL + (255,), width=stroke, joint="curve")
+
+    # ---- downsample to canvas ----
+    img = img.resize((CANVAS, CANVAS), Image.LANCZOS)
+
+    out_dir = os.path.join(HERE, "..", "src-tauri", "icons")
     os.makedirs(out_dir, exist_ok=True)
-    img.save(f"{out_dir}/app-icon.png")
-    print(f"wrote {out_dir}/app-icon.png ({W}x{H})")
+    img.save(os.path.join(out_dir, "app-icon.png"))
+    print(f"wrote src-tauri/icons/app-icon.png ({CANVAS}x{CANVAS}, artwork {ART // SS}px)")
+
 
 if __name__ == "__main__":
     main()
