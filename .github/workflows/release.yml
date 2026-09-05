@@ -40,6 +40,11 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      - name: authenticate with GitHub Packages (private feedback widget)
+        run: |
+          echo "@aspectrr:registry=https://npm.pkg.github.com" >> ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_TOKEN }}" >> ~/.npmrc
+
       - run: bun install --frozen-lockfile
 
       - name: pick release tag
