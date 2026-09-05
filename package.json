@@ -13,7 +13,7 @@
     "icons": "python3 scripts/make-icons.py"
   },
   "dependencies": {
-    "@aspectrr/feedback-widget": "^0.1.0",
+    "@aspectrr/feedback-widget": "^0.1.1",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
     "@kobalte/core": "^0.13.13",
